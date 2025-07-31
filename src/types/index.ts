@@ -20,6 +20,7 @@ export interface ChatResponse {
   message: string;
   citations: Citation[];
   guest_token?: string;
+  session_id?: string;
 }
 
 export interface ChatSession {
@@ -34,4 +35,5 @@ export interface ChatMessage {
     role: 'user' | 'assistant';
     content: string;
     timestamp: string;
+    citations?: Citation[];
 }

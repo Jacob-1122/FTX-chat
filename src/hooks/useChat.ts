@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Message, ChatMessage, ChatSession } from '../types';
 import { chatService } from '../services/chatService';
 import { chatHistoryService } from '../services/chatHistoryService';
-import { ChatSettings } from '../components/SettingsModal';
+import { ChatSettings } from '../components/SettingsSidebar';
 
 const GUEST_TOKEN_KEY = 'ftx_guest_token';
 
@@ -17,6 +17,7 @@ export const useChat = (authMode: 'admin' | 'guest') => {
   const [messages, setMessages] = useState<Message[]>([welcomeMessage]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [needsNewSession, setNeedsNewSession] = useState(false);
   const [guestToken, setGuestToken] = useState<string | undefined>(() => {
     return sessionStorage.getItem(GUEST_TOKEN_KEY) || undefined;
   });
@@ -46,7 +47,8 @@ export const useChat = (authMode: 'admin' | 'guest') => {
       const response = await chatService.sendMessage(
         content, 
         authMode === 'guest' ? guestToken : undefined,
-        settings
+        settings,
+        needsNewSession || !currentSessionId // Create new session if needed or if no current session
       );
       
       const assistantMessage: Message = {
@@ -58,10 +60,22 @@ export const useChat = (authMode: 'admin' | 'guest') => {
       };
 
       setMessages(prev => prev.slice(0, -1).concat(assistantMessage));
+      
+      // Update session tracking
+      if (response.session_id) {
+        setCurrentSessionId(response.session_id);
+      }
       if (authMode === 'guest' && response.guest_token) {
         setGuestToken(response.guest_token);
       }
+      
+      // Reset new session flag after first message
+      if (needsNewSession) {
+        setNeedsNewSession(false);
+      }
     } catch (error) {
+      console.error('Chat error:', error);
+      
       const errorMessage: Message = {
         id: (Date.now() + 2).toString(),
         content: 'I apologize, but I encountered an error. Please try again later.',
@@ -72,7 +86,7 @@ export const useChat = (authMode: 'admin' | 'guest') => {
     } finally {
       setIsLoading(false);
     }
-  }, [authMode, guestToken]);
+  }, [authMode, guestToken, needsNewSession, currentSessionId]);
 
   const loadMessages = useCallback(async (sessionId: string) => {
     setIsLoading(true);
@@ -83,9 +97,11 @@ export const useChat = (authMode: 'admin' | 'guest') => {
         content: msg.content,
         role: msg.role,
         timestamp: new Date(msg.timestamp),
+        citations: msg.citations,
       }));
       setMessages(formattedMessages);
       setCurrentSessionId(sessionId);
+      setNeedsNewSession(false); // Reset new session flag when loading existing session
     } catch (error) {
       console.error("Failed to load messages for session", sessionId, error);
       setMessages([ { ...welcomeMessage, id: 'error', content: "Failed to load chat history."} ]);
@@ -97,8 +113,9 @@ export const useChat = (authMode: 'admin' | 'guest') => {
   const startNewChat = useCallback(() => {
     setMessages([welcomeMessage]);
     setCurrentSessionId(null);
+    setNeedsNewSession(true); // Flag that next message should create new session
     // Don't clear guest token for new chats - guests should keep their session
-  }, [authMode]);
+  }, []);
 
   return {
     messages,

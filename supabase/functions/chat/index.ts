@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, guest_token, settings } = await req.json();
+    const { message, guest_token, settings, new_session } = await req.json();
     // @ts-ignore - Deno environment
     const supabaseClient = createClient(
       // @ts-ignore - Deno environment
@@ -39,27 +39,42 @@ serve(async (req) => {
     let currentGuestToken = guest_token;
 
     if (user) {
-      const { data, error } = await supabaseClient
-        .from('chat_sessions')
-        .select('id')
-        .eq('user_id', user.id)
-        .order('last_activity', { ascending: false })
-        .limit(1);
-
-      if (error) throw error;
-      sessionId = data?.[0]?.id;
-
-      if (!sessionId) {
+      if (new_session) {
+        // Create a new session when explicitly requested (New Chat button)
         const { data: newSession, error: newSessionError } = await supabaseClient
           .from('chat_sessions')
           .insert({ 
             user_id: user.id,
-            session_token: `admin_${user.id}_${Date.now()}` // Generate a unique session token
+            session_token: `admin_${user.id}_${Date.now()}`
           })
           .select('id')
           .single();
         if (newSessionError) throw newSessionError;
         sessionId = newSession.id;
+      } else {
+        // Try to use the most recent session, or create one if none exists
+        const { data, error } = await supabaseClient
+          .from('chat_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('last_activity', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+        sessionId = data?.[0]?.id;
+
+        if (!sessionId) {
+          const { data: newSession, error: newSessionError } = await supabaseClient
+            .from('chat_sessions')
+            .insert({ 
+              user_id: user.id,
+              session_token: `admin_${user.id}_${Date.now()}`
+            })
+            .select('id')
+            .single();
+          if (newSessionError) throw newSessionError;
+          sessionId = newSession.id;
+        }
       }
     } else {
         if (currentGuestToken) {
@@ -89,11 +104,17 @@ serve(async (req) => {
         }
     }
 
-    await supabaseClient.from('chat_messages').insert({
+    // Save user message
+    const { error: userInsertError } = await supabaseClient.from('chat_messages').insert({
       session_id: sessionId,
       message_type: 'user',
       content: message,
     });
+
+    if (userInsertError) {
+      console.error('Failed to save user message:', userInsertError);
+      throw new Error('Failed to save user message');
+    }
 
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
@@ -218,14 +239,35 @@ Provide a clear, focused answer based on the most relevant information from the 
     const claudeData = await claudeResponse.json();
     const assistantMessage = claudeData.content[0].text;
 
-    await supabaseClient.from('chat_messages').insert({
+    // Save assistant message
+    const { error: assistantInsertError } = await supabaseClient.from('chat_messages').insert({
       session_id: sessionId,
       message_type: 'assistant',
       content: assistantMessage,
       citations: citations,
     });
+
+    if (assistantInsertError) {
+      console.error('Failed to save assistant message:', assistantInsertError);
+      throw new Error(`Failed to save assistant message: ${assistantInsertError.message}`);
+    }
+
+    // Update session last_activity
+    const { error: sessionUpdateError } = await supabaseClient
+      .from('chat_sessions')
+      .update({ last_activity: new Date().toISOString() })
+      .eq('id', sessionId);
+
+    if (sessionUpdateError) {
+      console.error('Failed to update session activity:', sessionUpdateError);
+    }
     
-    return new Response(JSON.stringify({ message: assistantMessage, citations, guest_token: currentGuestToken }), {
+    return new Response(JSON.stringify({ 
+      message: assistantMessage, 
+      citations, 
+      guest_token: currentGuestToken,
+      session_id: sessionId // Return session ID for frontend tracking
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

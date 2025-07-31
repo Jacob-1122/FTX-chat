@@ -9,7 +9,7 @@ import ChatInput from './components/ChatInput';
 import { CombinedSidebar } from './components/CombinedSidebar';
 import SourceModal from './components/SourceModal';
 import PremadeQueries from './components/PremadeQueries';
-import SettingsModal, { ChatSettings } from './components/SettingsModal';
+import SettingsSidebar, { ChatSettings } from './components/SettingsSidebar';
 import { useChat } from './hooks/useChat';
 import { ChatSession, Citation } from './types';
 
@@ -24,12 +24,14 @@ function App() {
   const [queryCount, setQueryCount] = useState(0);
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
     model: 'claude-3-opus-20240229',
     temperature: 0.7,
     maxTokens: 1000,
-    knowledgeBase: 'ftx_documents'
+    knowledgeBase: 'ftx_documents',
+    maxSources: 4,
+    systemPrompt: 'You are a helpful AI assistant specializing in legal document analysis.',
+    contextWindow: 4000
   });
 
   const { messages, isLoading, sendMessage, startNewChat, loadMessages, currentSessionId } = useChat(userMode as 'admin' | 'guest');
@@ -77,7 +79,18 @@ function App() {
     const savedSettings = localStorage.getItem('chatSettings');
     if (savedSettings) {
       try {
-        setChatSettings(JSON.parse(savedSettings));
+        const parsed = JSON.parse(savedSettings);
+        // Merge with defaults to ensure all new parameters exist
+        setChatSettings({
+          model: 'claude-3-opus-20240229',
+          temperature: 0.7,
+          maxTokens: 1000,
+          knowledgeBase: 'ftx_documents',
+          maxSources: 4,
+          systemPrompt: 'You are a helpful AI assistant specializing in legal document analysis.',
+          contextWindow: 4000,
+          ...parsed 
+        });
       } catch (error) {
         console.error('Error loading settings:', error);
       }
@@ -144,7 +157,7 @@ function App() {
         onGuestLogout={handleGuestLogout}
       />
       <div className="flex-1 flex flex-col">
-        <ChatHeader onSettingsClick={() => setIsSettingsOpen(true)} />
+        <ChatHeader />
         <main className="flex-1 overflow-y-auto p-4 bg-gray-800 custom-scrollbar">
           <div className="max-w-4xl mx-auto h-full">
             {messages.length === 0 && (
@@ -179,9 +192,8 @@ function App() {
         isOpen={isModalOpen}
         onClose={closeModal}
       />
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+      
+      <SettingsSidebar
         settings={chatSettings}
         onSettingsChange={handleSettingsChange}
       />

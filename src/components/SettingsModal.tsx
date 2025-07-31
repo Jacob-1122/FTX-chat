@@ -1,21 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, Cog6ToothIcon, CpuChipIcon, DocumentTextIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, Cog6ToothIcon, CpuChipIcon, DocumentTextIcon, AdjustmentsHorizontalIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
-interface SettingsModalProps {
+interface SettingsSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   settings: ChatSettings;
   onSettingsChange: (settings: ChatSettings) => void;
 }
 
-export interface ChatSettings {
-  model: string;
-  temperature: number;
-  maxTokens: number;
-  knowledgeBase: string;
-}
+import { ChatSettings } from './SettingsSidebar';
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ 
+const SettingsSidebar: React.FC<SettingsSidebarProps> = ({ 
   isOpen, 
   onClose, 
   settings, 
@@ -37,7 +32,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       model: 'claude-3-opus-20240229',
       temperature: 0.7,
       maxTokens: 1000,
-      knowledgeBase: 'ftx_documents'
+      knowledgeBase: 'ftx_documents',
+      maxSources: 4,
+      systemPrompt: 'You are a helpful AI assistant specializing in legal document analysis.',
+      contextWindow: 4000
     };
     setLocalSettings(defaultSettings);
   };
@@ -50,14 +48,36 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const knowledgeBases = [
     { id: 'ftx_documents', name: 'FTX Legal Documents', description: 'Primary bankruptcy court filings' },
-    { id: 'all_documents', name: 'All Documents', description: 'Comprehensive document collection' }
+    { id: 'ftx_documents_internet', name: 'FTX Documents + Internet', description: 'Comprehensive search with web access' }
   ];
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-xl border border-gray-600 shadow-xl w-full max-w-xl max-h-[85vh] overflow-hidden">
+    <>
+      {/* Backdrop overlay - only visible when open */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-30 backdrop-blur-sm z-40 transition-opacity duration-300"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Sidebar Panel */}
+      <div className={`fixed top-0 right-0 h-full w-80 bg-gray-800 border-l border-gray-600 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}>
+        
+        {/* Expand Button - Always visible when closed */}
+        {!isOpen && (
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-settings'))}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full bg-gray-800 border border-gray-600 border-r-0 rounded-l-lg p-2 hover:bg-gray-700 transition-colors"
+            title="Open Settings"
+          >
+            <Cog6ToothIcon className="w-5 h-5 text-gray-400" />
+          </button>
+        )}
+        
+        <div className="flex flex-col h-full">
         {/* Header */}
         <div className="bg-gray-750 border-b border-gray-600 p-4">
           <div className="flex justify-between items-center">
@@ -74,8 +94,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-4 overflow-y-auto max-h-[calc(85vh-120px)] custom-scrollbar">
+        {/* Content - Full height with flex */}
+        <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
 
         <div className="space-y-6">
           {/* Model Selection */}
@@ -226,7 +246,8 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className="bg-gray-750 border-t border-gray-600 p-4 flex justify-between items-center">
+        <div className="bg-gray-750 border-t border-gray-600 p-4 flex-shrink-0">
+          <div className="flex justify-between items-center">
           <button
             onClick={handleReset}
             className="px-4 py-2 border border-gray-500 text-gray-300 rounded-lg hover:bg-gray-600 hover:border-gray-400 transition-all duration-200 text-sm flex items-center gap-2"
@@ -254,9 +275,11 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
           </div>
         </div>
+        
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
-export default SettingsModal;
+export default SettingsSidebar;

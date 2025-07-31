@@ -3,6 +3,7 @@ import { Message, Citation } from '../types';
 import { UserIcon, CpuChipIcon } from '@heroicons/react/24/solid';
 import CitationCard from './CitationCard';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessageProps {
   message: Message;
@@ -28,7 +29,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onCitationClick }) =
             </div>
         ) : (
             <div className="prose prose-invert prose-p:my-2">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
             </div>
         )}
     </div>
