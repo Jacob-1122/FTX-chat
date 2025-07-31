@@ -30,7 +30,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading, disable
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const scrollHeight = textareaRef.current.scrollHeight;
-      const maxHeight = 128; // 8rem
+      const maxHeight = 200; // Increased max height for better expansion
       textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
     }
   }, [input]);
@@ -45,9 +45,10 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading, disable
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={disabled ? "Query limit reached for guest session." : "Ask a question about the FTX court documents..."}
-            className="w-full resize-none bg-gray-700 text-gray-200 rounded-lg pr-12 pl-4 py-3 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full resize-none bg-gray-700 text-gray-200 rounded-lg pr-12 pl-4 py-3 border border-gray-600 focus:ring-2 focus:ring-blue-500 focus:outline-none overflow-hidden"
             disabled={isLoading || disabled}
             rows={1}
+            style={{ minHeight: '52px' }}
           />
           <button
             type="submit"

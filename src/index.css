@@ -1,3 +1,101 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Hide scrollbars while keeping functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Custom slider styling */
+.temperature-slider::-webkit-slider-thumb,
+.tokens-slider::-webkit-slider-thumb {
+  appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #6b7280;
+  cursor: pointer;
+  border: 2px solid #374151;
+  transition: all 0.2s ease;
+}
+
+.temperature-slider::-webkit-slider-thumb:hover,
+.tokens-slider::-webkit-slider-thumb:hover {
+  background: #9ca3af;
+  border-color: #4b5563;
+}
+
+/* Firefox slider styling */
+.temperature-slider::-moz-range-thumb,
+.tokens-slider::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #6b7280;
+  cursor: pointer;
+  border: 2px solid #374151;
+}
+
+/* Custom background colors for gray variants */
+.bg-gray-750 {
+  background-color: #2d374a;
+}
+
+/* Custom scrollbars */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #374151;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Apply custom scrollbar to all scrollable areas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #374151;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #374151;
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+*::-webkit-scrollbar-corner {
+  background: #374151;
+}

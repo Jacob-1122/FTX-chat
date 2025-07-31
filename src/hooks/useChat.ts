@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Message, ChatMessage, ChatSession } from '../types';
 import { chatService } from '../services/chatService';
 import { chatHistoryService } from '../services/chatHistoryService';
+import { ChatSettings } from '../components/SettingsModal';
 
 const GUEST_TOKEN_KEY = 'ftx_guest_token';
 
@@ -28,7 +29,7 @@ export const useChat = (authMode: 'admin' | 'guest') => {
     }
   }, [guestToken]);
 
-  const sendMessage = useCallback(async (content: string) => {
+  const sendMessage = useCallback(async (content: string, settings?: ChatSettings) => {
     if (!content.trim()) return;
 
     const userMessage: Message = {
@@ -42,7 +43,11 @@ export const useChat = (authMode: 'admin' | 'guest') => {
     setIsLoading(true);
 
     try {
-      const response = await chatService.sendMessage(content, authMode === 'guest' ? guestToken : undefined);
+      const response = await chatService.sendMessage(
+        content, 
+        authMode === 'guest' ? guestToken : undefined,
+        settings
+      );
       
       const assistantMessage: Message = {
         id: (Date.now() + 2).toString(),

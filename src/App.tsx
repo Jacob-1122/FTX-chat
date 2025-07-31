@@ -8,6 +8,8 @@ import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
 import { CombinedSidebar } from './components/CombinedSidebar';
 import SourceModal from './components/SourceModal';
+import PremadeQueries from './components/PremadeQueries';
+import SettingsModal, { ChatSettings } from './components/SettingsModal';
 import { useChat } from './hooks/useChat';
 import { ChatSession, Citation } from './types';
 
@@ -22,6 +24,13 @@ function App() {
   const [queryCount, setQueryCount] = useState(0);
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [chatSettings, setChatSettings] = useState<ChatSettings>({
+    model: 'claude-3-opus-20240229',
+    temperature: 0.7,
+    maxTokens: 1000,
+    knowledgeBase: 'ftx_documents'
+  });
 
   const { messages, isLoading, sendMessage, startNewChat, loadMessages, currentSessionId } = useChat(userMode as 'admin' | 'guest');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -63,6 +72,24 @@ function App() {
     }
   }, [userMode]);
 
+  // Load settings from localStorage
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('chatSettings');
+    if (savedSettings) {
+      try {
+        setChatSettings(JSON.parse(savedSettings));
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      }
+    }
+  }, []);
+
+  // Save settings to localStorage
+  const handleSettingsChange = (newSettings: ChatSettings) => {
+    setChatSettings(newSettings);
+    localStorage.setItem('chatSettings', JSON.stringify(newSettings));
+  };
+
   const handleSendMessage = (message: string) => {
     if (userMode === 'guest' && queryCount >= GUEST_QUERY_LIMIT) return;
     if (userMode === 'guest') {
@@ -70,7 +97,11 @@ function App() {
       setQueryCount(newCount);
       sessionStorage.setItem('queryCount', newCount.toString());
     }
-    sendMessage(message);
+    sendMessage(message, chatSettings);
+  };
+
+  const handlePremadeQuery = (query: string) => {
+    handleSendMessage(query);
   };
 
   const scrollToBottom = () => {
@@ -94,6 +125,13 @@ function App() {
 
   const isGuestQueryLimitReached = userMode === 'guest' && queryCount >= GUEST_QUERY_LIMIT;
 
+  const handleGuestLogout = () => {
+    setUserMode('loggedOut');
+    setQueryCount(0);
+    sessionStorage.removeItem('queryCount');
+    startNewChat();
+  };
+
   return (
     <div className="flex h-screen bg-gray-900 text-white font-sans">
       <CombinedSidebar
@@ -103,11 +141,22 @@ function App() {
         onNewChat={startNewChat}
         activeSessionId={currentSessionId}
         userMode={userMode as 'admin' | 'guest'}
+        onGuestLogout={handleGuestLogout}
       />
       <div className="flex-1 flex flex-col">
-        <ChatHeader />
-        <main className="flex-1 overflow-y-auto p-4 bg-gray-800">
+        <ChatHeader onSettingsClick={() => setIsSettingsOpen(true)} />
+        <main className="flex-1 overflow-y-auto p-4 bg-gray-800 custom-scrollbar">
           <div className="max-w-4xl mx-auto h-full">
+            {messages.length === 0 && (
+              <div className="flex items-center justify-center min-h-full">
+                <div className="max-w-3xl w-full">
+                  <PremadeQueries 
+                    onQuerySelect={handlePremadeQuery}
+                    disabled={isGuestQueryLimitReached}
+                  />
+                </div>
+              </div>
+            )}
             {messages.map((message) => (
               <ChatMessage key={message.id} message={message} onCitationClick={handleCitationClick} />
             ))}
@@ -129,6 +178,12 @@ function App() {
         citation={selectedCitation}
         isOpen={isModalOpen}
         onClose={closeModal}
+      />
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={chatSettings}
+        onSettingsChange={handleSettingsChange}
       />
     </div>
   );

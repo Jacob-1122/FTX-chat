@@ -15,7 +15,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 50; // Reduced batch size for larger chunks (3500 chars each)
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -33,6 +33,7 @@ serve(async (req) => {
     }
     
     console.log(`Processing ${chunks.length} chunks for file: ${fileName}`);
+    console.log(`Average chunk size: ${Math.round(chunks.reduce((sum: number, chunk: string) => sum + chunk.length, 0) / chunks.length)} characters`);
 
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batchChunks = chunks.slice(i, i + BATCH_SIZE);

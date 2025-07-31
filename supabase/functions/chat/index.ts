@@ -23,7 +23,7 @@ serve(async (req) => {
   }
 
   try {
-    const { message, guest_token } = await req.json();
+    const { message, guest_token, settings } = await req.json();
     // @ts-ignore - Deno environment
     const supabaseClient = createClient(
       // @ts-ignore - Deno environment
@@ -110,7 +110,7 @@ serve(async (req) => {
         body: JSON.stringify({
             collectionName: 'ftx_documents',
             vector: queryEmbedding,
-            limit: 10, // Increased from 5 to get more options
+            limit: 25, // Increased to get more diverse options for better context
             outputFields: ['primary_key', 'text', 'document_name', 'page_number'],
         }),
     });
@@ -122,7 +122,16 @@ serve(async (req) => {
         throw new Error('Failed to parse search results from vector database.');
     }
     
-    const citations = zillizData.data
+    // Helper function to calculate text similarity for deduplication
+    const calculateSimilarity = (text1: string, text2: string): number => {
+      const words1 = new Set(text1.toLowerCase().split(/\s+/));
+      const words2 = new Set(text2.toLowerCase().split(/\s+/));
+      const intersection = new Set([...words1].filter(x => words2.has(x)));
+      const union = new Set([...words1, ...words2]);
+      return intersection.size / union.size; // Jaccard similarity
+    };
+
+    const filteredResults = zillizData.data
       .filter((r) => {
         const text = r.text.toLowerCase();
         // Filter out chunks that are mostly addresses, headers, or boilerplate
@@ -138,12 +147,30 @@ serve(async (req) => {
         ];
         
         const isMostlyBoilerplate = addressPatterns.some(pattern => 
-          pattern.test(text) && text.length < 200
+          pattern.test(text) && text.length < 300 // Increased threshold for larger chunks
         );
         
-        return !isMostlyBoilerplate && text.length > 100;
-      })
-      .slice(0, 5) // Take top 5 after filtering
+        return !isMostlyBoilerplate && text.length > 200; // Increased minimum length
+      });
+
+    // Deduplicate similar chunks to ensure diverse context
+    const deduplicatedResults: any[] = [];
+    const SIMILARITY_THRESHOLD = 0.7; // 70% similarity threshold
+    
+    for (const result of filteredResults) {
+      const isDuplicate = deduplicatedResults.some((existing: any) => 
+        calculateSimilarity(result.text, existing.text) > SIMILARITY_THRESHOLD
+      );
+      
+      if (!isDuplicate) {
+        deduplicatedResults.push(result);
+      }
+      
+      // Stop when we have enough diverse chunks
+      if (deduplicatedResults.length >= 4) break;
+    }
+
+    const citations = deduplicatedResults
       .map((r) => ({
         id: r.primary_key,
         documentTitle: r.document_name,
@@ -155,19 +182,24 @@ serve(async (req) => {
     const context = citations.map((c) => `Doc: ${c.documentTitle} (p${c.pageNumber}): "${c.excerpt}"`).join('\n\n');
     const prompt = `You are an expert legal AI assistant analyzing FTX bankruptcy court documents. 
 
-IMPORTANT INSTRUCTIONS:
-- Focus ONLY on substantive legal content, rulings, decisions, and case developments
-- Ignore boilerplate text, addresses, headers, footers, and procedural information
-- If the provided context contains mostly addresses, headers, or procedural text, say so and ask for a more specific question
-- Prioritize content that discusses legal arguments, court decisions, financial details, or case developments
-- Provide clear, concise answers based on the most relevant legal content available
+RESPONSE GUIDELINES:
+- Answer directly and concisely based on the most relevant information
+- For simple questions, provide brief, focused answers
+- For complex questions, provide more detailed analysis as needed
+- Only cite the most relevant documents that directly address the question
+- Avoid repetitive information across sources
 
-Context from court documents:
+Context from ${citations.length} court document excerpts:
 ${context}
 
 Question: ${message}
 
-Please provide a detailed answer based on the substantive legal content from the court documents. If the context appears to be mostly procedural or boilerplate text, please note this limitation.`;
+Provide a clear, focused answer based on the most relevant information from the court documents. Be concise but thorough enough to address the question properly.`;
+    // Extract settings with defaults
+    const modelToUse = settings?.model || 'claude-3-opus-20240229';
+    const temperatureToUse = settings?.temperature !== undefined ? settings.temperature : 0.7;
+    const maxTokensToUse = settings?.max_tokens || 1000;
+
     const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 
@@ -175,7 +207,12 @@ Please provide a detailed answer based on the substantive legal content from the
           'x-api-key': CLAUDE_API_KEY as string, 
           'anthropic-version': '2023-06-01' 
         },
-        body: JSON.stringify({ model: 'claude-3-opus-20240229', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] }),
+        body: JSON.stringify({ 
+          model: modelToUse, 
+          max_tokens: maxTokensToUse,
+          temperature: temperatureToUse,
+          messages: [{ role: 'user', content: prompt }] 
+        }),
     });
     if (!claudeResponse.ok) throw new Error(`Claude API error: ${await claudeResponse.text()}`);
     const claudeData = await claudeResponse.json();

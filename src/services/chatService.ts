@@ -1,10 +1,20 @@
 import { supabase } from './supabaseClient';
 import { ChatResponse } from '../types';
+import { ChatSettings } from '../components/SettingsModal';
 
 class ChatService {
-  async sendMessage(message: string, guestToken?: string): Promise<ChatResponse> {
+  async sendMessage(message: string, guestToken?: string, settings?: ChatSettings): Promise<ChatResponse> {
     const { data, error } = await supabase.functions.invoke('chat', {
-      body: { message, guest_token: guestToken },
+      body: { 
+        message, 
+        guest_token: guestToken,
+        settings: settings ? {
+          model: settings.model,
+          temperature: settings.temperature,
+          max_tokens: settings.maxTokens,
+          knowledge_base: settings.knowledgeBase
+        } : undefined
+      },
     });
 
     if (error) {

@@ -16,6 +16,7 @@ interface CombinedSidebarProps {
   onNewChat: () => void;
   activeSessionId: string | null;
   userMode: 'admin' | 'guest';
+  onGuestLogout?: () => void;
 }
 
 export const CombinedSidebar: React.FC<CombinedSidebarProps> = ({
@@ -25,6 +26,7 @@ export const CombinedSidebar: React.FC<CombinedSidebarProps> = ({
   onNewChat,
   activeSessionId,
   userMode,
+  onGuestLogout,
 }) => {
   return (
     <div className="flex flex-col w-80 bg-gray-800 text-gray-200">
@@ -37,7 +39,7 @@ export const CombinedSidebar: React.FC<CombinedSidebarProps> = ({
             {userEmail && <p className="text-xs text-gray-400">{userEmail}</p>}
           </div>
         </div>
-        {userMode === 'admin' && (
+        {userMode === 'admin' ? (
           <button
             onClick={() => authService.signOut()}
             title="Sign Out"
@@ -45,7 +47,15 @@ export const CombinedSidebar: React.FC<CombinedSidebarProps> = ({
           >
             <ArrowRightOnRectangleIcon className="h-6 w-6" />
           </button>
-        )}
+        ) : userMode === 'guest' && onGuestLogout ? (
+          <button
+            onClick={onGuestLogout}
+            title="Exit Guest Mode"
+            className="p-2 rounded-md hover:bg-gray-700 transition-colors"
+          >
+            <ArrowRightOnRectangleIcon className="h-6 w-6" />
+          </button>
+        ) : null}
       </div>
 
       {/* Admin: Document Upload */}
@@ -56,7 +66,7 @@ export const CombinedSidebar: React.FC<CombinedSidebarProps> = ({
       )}
 
       {/* Chat History */}
-      <div className="flex-1 p-4 overflow-y-auto">
+      <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
         <h2 className="text-lg font-bold mb-2">Chat History</h2>
         <button
           onClick={onNewChat}
