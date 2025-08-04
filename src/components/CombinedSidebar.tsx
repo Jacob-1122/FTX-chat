@@ -31,7 +31,7 @@ export const CombinedSidebar: React.FC<CombinedSidebarProps> = ({
   return (
     <div className="flex flex-col w-80 bg-gray-800 text-gray-200">
       {/* User Info and Logout */}
-      <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+      <div className="p-4 flex justify-between items-center">
         <div className="flex items-center">
           <UserCircleIcon className="h-8 w-8 mr-3" />
           <div>
@@ -60,7 +60,7 @@ export const CombinedSidebar: React.FC<CombinedSidebarProps> = ({
 
       {/* Admin: Document Upload */}
       {userMode === 'admin' && (
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-4">
           <AdminDashboard />
         </div>
       )}
@@ -90,9 +90,14 @@ export const CombinedSidebar: React.FC<CombinedSidebarProps> = ({
                   >
                     <div className="flex items-center">
                       <ChatBubbleLeftRightIcon className="h-5 w-5 mr-3" />
-                      <span className="truncate">
-                        Chat from {new Date(session.last_activity).toLocaleString()}
-                      </span>
+                      <div className="flex-1 overflow-hidden">
+                        <p className="font-medium truncate">
+                          {session.summary || 'Chat Session'}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {new Date(session.last_activity).toLocaleDateString()}
+                        </p>
+                      </div>
                     </div>
                   </li>
                 ))}

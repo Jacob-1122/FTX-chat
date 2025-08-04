@@ -28,6 +28,7 @@ export interface ChatSession {
     started_at: string;
     last_activity: string;
     total_messages: number;
+    summary?: string;
 }
 
 export interface ChatMessage {

@@ -64,6 +64,17 @@ export const useChat = (authMode: 'admin' | 'guest') => {
       // Update session tracking
       if (response.session_id) {
         setCurrentSessionId(response.session_id);
+        
+        // Update session summary after a few messages (for admin users)
+        if (authMode === 'admin') {
+          // Check message count to decide when to update summary
+          const messageCount = messages.length + 2; // current messages + user + assistant
+          if (messageCount === 4 || messageCount === 8) { // Update after 2nd and 4th exchanges
+            setTimeout(() => {
+              chatHistoryService.updateSessionSummary(response.session_id!);
+            }, 1000); // Delay to ensure messages are saved
+          }
+        }
       }
       if (authMode === 'guest' && response.guest_token) {
         setGuestToken(response.guest_token);

@@ -113,6 +113,15 @@ function App() {
     sendMessage(message, chatSettings);
   };
 
+  const handleFileUpload = async (files: FileList) => {
+    // TODO: Implement file upload functionality
+    console.log('Files to upload:', files);
+    // For now, just log the files
+    Array.from(files).forEach(file => {
+      console.log(`File: ${file.name}, Type: ${file.type}, Size: ${file.size} bytes`);
+    });
+  };
+
   const handlePremadeQuery = (query: string) => {
     handleSendMessage(query);
   };
@@ -180,6 +189,7 @@ function App() {
           onSendMessage={handleSendMessage}
           isLoading={isLoading}
           disabled={isGuestQueryLimitReached}
+          onFileUpload={handleFileUpload}
         />
         {isGuestQueryLimitReached && (
           <div className="text-center text-sm text-yellow-400 bg-yellow-900 p-2 border-t border-yellow-700">
